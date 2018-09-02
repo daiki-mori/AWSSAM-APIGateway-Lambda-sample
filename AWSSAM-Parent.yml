@@ -1,0 +1,100 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: 'A serverless application that replicate all objects in S3 bucket to Google Cloud Storage.'
+
+Globals:
+  Function:
+    Runtime: python3.6
+    Timeout: 300
+    MemorySize: 256
+
+Parameters:
+  IncludeFileBucket-20180902:
+    Type: String
+
+Resources:
+  # Include file
+  Fn::Transform:
+    Name: AWS::Include
+    Parameters:
+      Location: !Sub s3://${IncludeFileBucket-20180902}/AWSSAM-Child.yml
+
+  # Lambda Function
+  HTTPResponseFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./src
+      Handler: app.main
+      FunctionName: HTTPAccess
+      Role: 
+        Fn::GetAtt:
+          - SNSAccessLambdaRole
+          - Arn
+      Events:
+        FirstAccessNotify:
+        Properties:
+          Topic: 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:http-access-notify'
+ 
+  HTTPResponsePermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref HTTPResponseFunction
+      Principal: apigateway.amazonaws.com
+ 
+  HTTPResponseAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      DefinitionBody:
+        swagger: "2.0"
+        info:
+          title: awssam-apigateway
+        schemes:
+          - https
+        paths:
+          /http:
+            get:
+              summary: "top page"
+              description: "http response [top page html]"
+              produces:
+              - "application/json"
+              x-amazon-apigateway-integration:
+                  responses:
+                    default:
+                      statusCode: "200"
+                  uri:
+                    Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${HTTPResponseFunction.Arn}/invocations
+                  passthroughBehavior: "when_no_match"
+                  httpMethod: "GET"
+                  type: "aws_proxy"
+        x-amazon-apigateway-policy:
+          Version: "2012-10-17"
+          Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: execute-api:Invoke
+            Resource:
+              - "execute-api:/*"
+            Condition:
+              IpAddress:
+                aws:SourceIp:
+                  - "x.x.x.x/32"
+  SNSAccessLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSNSFullAccess
+      RoleName: SNSAccessLambdaRole
+
+      
+
+
+

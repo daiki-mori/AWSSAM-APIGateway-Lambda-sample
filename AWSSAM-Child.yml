@@ -1,0 +1,9 @@
+  # アクセス通知用 topic
+  NotifySNSTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      DisplayName: 'AccessNotify'
+      TopicName: 'http-access-notify'
+      Subscription: 
+        Endpoint: mailaddress
+        Protocol: email
