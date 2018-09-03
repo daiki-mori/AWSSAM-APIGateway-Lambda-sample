@@ -8,16 +8,12 @@ Globals:
     Timeout: 300
     MemorySize: 256
 
-Parameters:
-  IncludeFileBucket-20180902:
-    Type: String
-
 Resources:
   # Include file
   Fn::Transform:
     Name: AWS::Include
-    Parameters:
-      Location: !Sub s3://${IncludeFileBucket-20180902}/AWSSAM-Child.yml
+      Parameters:
+        Location: s3://<<S3 BucketName>>/AWSSAM-Child.yml
 
   # Lambda Function
   HTTPResponseFunction:
@@ -32,8 +28,14 @@ Resources:
           - Arn
       Events:
         FirstAccessNotify:
-        Properties:
-          Topic: 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:http-access-notify'
+          Type: SNS
+          Properties:
+            Topic: !Join
+              - ":"
+              - - "arn:aws:sns"
+                - !Ref AWS::Region
+                - !Ref AWS::AccountId
+                - http-access-notify
  
   HTTPResponsePermission:
     Type: "AWS::Lambda::Permission"
