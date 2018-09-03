@@ -1,2 +1,9 @@
-def main():
-    return '<html><body>I am studying now.</body></html>'
+import json
+def main(event, context):
+    response = {'message': 'I am studying now.'}
+    return {
+        "statusCode": 200,
+        "headers": {},
+        "body": json.dumps(response)
+    }
+
